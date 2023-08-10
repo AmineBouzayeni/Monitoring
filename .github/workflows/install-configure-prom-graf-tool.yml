@@ -1,37 +1,90 @@
-name: Install & configure monitoring tool
+# name: Install & configure prometheus & grafana tools
 
-on: [push]
-env:
-    CLUSTER_NAME: dockercoins-cluster-teo
-    CLUSTER_ZONE: europe-west1-b
-    PROJECT_NAME: teolia-school-devops
-
+# on: [push]
+# env:
+#     CLUSTER_NAME: dockercoins-cluster-teo
+#     CLUSTER_ZONE: europe-west1-b
+#     PROJECT_NAME: teolia-school-devops
+#     GRAFANA_PORT: 30008
       
-jobs:
-  InstallAndConfigureMonitoring:
-    runs-on: ubuntu-latest
-    permissions: write-all
-    steps:
+# jobs:
+#   InstallAndConfigureMonitoring:
+#     runs-on: ubuntu-latest
+#     permissions: write-all
+#     steps:
       
-      - name: Checkout code
-        uses: actions/checkout@master
+#       - name: Checkout code
+#         uses: actions/checkout@master
 
-      - name: Authenticate to GKE
-        uses: "./.github/template/authenticate" 
-        with:
-          gcloud_key: ${{ secrets.GCLOUD_KEY }}
-          cluster_name: ${{ env.CLUSTER_NAME }}
-          cluster_zone: ${{ env.CLUSTER_ZONE }}
-          project_name: ${{ env.PROJECT_NAME }}
-      - name: Create prometheus-grafana Release
-        id: create_release
-        uses: "./.github/template/release"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          product: prometheus-grafana
-          version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
-          output: $GITHUB_OUTPUT
+#       - name: Authenticate to GKE
+#         uses: "./.github/template/authenticate" 
+#         with:
+#           gcloud_key: ${{ secrets.GCLOUD_KEY }}
+#           cluster_name: ${{ env.CLUSTER_NAME }}
+#           cluster_zone: ${{ env.CLUSTER_ZONE }}
+#           project_name: ${{ env.PROJECT_NAME }}
+#       - name: Create prometheus-grafana Release
+#         id: create_release
+#         uses: "./.github/template/release"
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         with:
+#           product: prometheus-grafana
+#           version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
+#           output: $GITHUB_OUTPUT
 
-      - name: Install helm
-        uses: "./.github/template/helm"           
+#       - name: Install helm
+#         uses: "./.github/template/helm"    
+      
+#       - name: Install and configure Prometheus
+#         uses: "./.github/template/install_release"
+#         with:
+#           repo: https://prometheus-community.github.io/helm-charts
+#           product: prometheus-community
+#           version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
+#           values_path: ./prometheus_conf/prometheus-values.yml
+#           chart: prometheus-community/prometheus
+       
+#       - name: Update admin password, grafana port and release value.
+#         uses: cschleiden/replace-tokens@v1
+#         with:
+#           files: '["./grafana_conf/grafana-values.yml", "./manifests/grafana-service-ext.yml"]'
+#           tokenPrefix: __
+#           tokenSuffix: __
+#         env:
+#           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+#           GRAFANA_PORT: ${{ env.GRAFANA_PORT }}
+#           RELEASE: ${{ steps.create_release.outputs.currentVersion }}
+#       - name: Update admin password, grafana ip & port in get-datasource script.
+#         uses: cschleiden/replace-tokens@v1
+#         with:
+#           files: '["./get-datasource-uid.sh"]'
+#           tokenPrefix: __
+#           tokenSuffix: __
+#         env:
+#           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+#           GRAFANA_IP: ${{ vars.GRAFANA_IP }}
+#           GRAFANA_PORT: ${{ env.GRAFANA_PORT }}
+#           DS_NAME: Prometheus
+#       - name: Get datasource uid
+#         id: uid
+#         run: |
+#           chmod +x ./grafana_conf/get-datasource-uid.sh
+#           datasourceUid=$(./grafana_conf/get-datasource-uid.sh)
+#           echo "datasourceUid=$(echo $datasourceUid)" >> $GITHUB_OUTPUT
+#       - name: Update UID in dashboard json file.
+#         uses: cschleiden/replace-tokens@v1
+#         with:
+#           files: '["./sample-grafana-dashboard.yml"]'
+#           tokenPrefix: __
+#           tokenSuffix: __
+#         env:
+#           UID: ${{ steps.uid.outputs.datasourceUid }}
+#       - name: Install & configure Grafana
+#         uses: './.github/template/install_release'
+#         with:
+#           repo: https://grafana.github.io/helm-charts
+#           product: grafana
+#           version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
+#           values_path: ./grafana_conf/grafana-values.yml
+#           chart: grafana/grafana
