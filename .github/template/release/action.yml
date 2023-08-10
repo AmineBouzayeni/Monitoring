@@ -5,9 +5,7 @@ inputs:
   product: 
     required: true
   version:
-    required: true
-  output:
-    required: true    
+    required: true   
 
 runs:
   using: "composite" # A composite action allows you to combine multiple workflow steps within one action.
@@ -22,8 +20,3 @@ runs:
           ${{ inputs.product }} release ${{ inputs.version }}.
         draft: false
         prerelease: false
-    - name: Replace points by dashes in release string
-      shell: bash
-      run: |
-        currentVersion=$(echo ${{ inputs.version }} | sed 's/\./-/g')
-        echo "currentVersion=$(echo ${{ inputs.version }})" >> ${{ inputs.output }}   

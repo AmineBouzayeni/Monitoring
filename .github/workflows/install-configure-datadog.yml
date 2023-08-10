@@ -1,0 +1,59 @@
+name: Install & configure tools
+
+on: workflow_dispatch
+env:
+    CLUSTER_NAME: dockercoins-cluster-teo
+    CLUSTER_ZONE: europe-west1-b
+    PROJECT_NAME: teolia-school-devops
+      
+jobs:
+  InstallAndConfigureMonitoring:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Authenticate to GKE
+        uses: "./.github/template/authenticate" 
+        with:
+          gcloud_key: ${{ secrets.GCLOUD_KEY }}
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          cluster_zone: ${{ env.CLUSTER_ZONE }}
+          project_name: ${{ env.PROJECT_NAME }}
+      - name: Create Datadog Release
+        id: create_release
+        uses: "./.github/template/release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          product: datadog
+          version: ${{ vars.DATADOG_CURRENT_VERSION }}
+
+      - name: Replace points by dashes in release string
+        id: release
+        run: |
+            currentVersion=$(echo ${{ vars.DATADOG_CURRENT_VERSION }} | sed 's/\./-/g')
+            echo "currentVersion=$(echo $currentVersion)" >> $GITHUB_OUTPUT 
+    
+      - name: Update cluster name & datadog api key values in datadog-values.yml
+        uses: cschleiden/replace-tokens@v1
+        with:
+            files: '["./datadog_conf/datadog-values.yml"]'
+            tokenPrefix: __
+            tokenSuffix: __  
+        env:
+            DATADOG_API_KEY_SECRET: ${{ secrets.DATADOG_API_KEY_SECRET }}      
+
+      - name: Install helm
+        uses: "./.github/template/helm"    
+      
+      - name: Install and configure Datadog
+        uses: "./.github/template/install_release"
+        with:
+          repo: https://helm.datadoghq.com
+          product: datadog
+          version: ${{ steps.release.outputs.currentVersion }}
+          values_path: ./datadog_conf/datadog-values.yml
+          chart: datadog/datadog
