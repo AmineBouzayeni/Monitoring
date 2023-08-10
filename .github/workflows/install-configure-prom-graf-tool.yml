@@ -1,0 +1,37 @@
+name: Install & configure monitoring tool
+
+on: [push]
+env:
+    CLUSTER_NAME: dockercoins-cluster-teo
+    CLUSTER_ZONE: europe-west1-b
+    PROJECT_NAME: teolia-school-devops
+
+      
+jobs:
+  InstallAndConfigureMonitoring:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Authenticate to GKE
+        uses: "./.github/template/authenticate" 
+        with:
+          gcloud_key: ${{ secrets.GCLOUD_KEY }}
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          cluster_zone: ${{ env.CLUSTER_ZONE }}
+          project_name: ${{ env.PROJECT_NAME }}
+      - name: Create prometheus-grafana Release
+        id: create_release
+        uses: "./.github/template/release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          product: prometheus-grafana
+          version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
+          output: $GITHUB_OUTPUT
+
+      - name: Install helm
+        uses: "./.github/template/helm"           
