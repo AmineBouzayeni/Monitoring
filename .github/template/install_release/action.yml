@@ -1,0 +1,31 @@
+name: Install helm
+
+inputs:
+  repo:
+    required: true
+  product:
+    required: true
+  version:
+    required: true
+  values_path:
+    required: true
+  chart:
+    required: true   
+
+runs:
+  using: "composite" # A composite action allows you to combine multiple workflow steps within one action.
+  # Defining the action steps(Just one step to be simple)
+  steps:
+    - name: Install and configure release
+      shell: bash
+      run: |
+        helm repo add ${{ inputs.product }} ${{ inputs.repo }}
+        helm repo update
+        if [[ $(helm ls --short --filter '${{ inputs.product }}' | grep -c ${{ inputs.product }}) != 0 ]]
+          then
+              helm ls --short --filter '${{ inputs.product }}' | xargs -L1 helm delete
+          else
+              echo "No previous release to uninstall. Continuing."
+        fi
+        helm install --namespace monitoring ${{ inputs.product }}-${{ inputs.version }} -f ${{ inputs.values_path }} ${{ inputs.chart }}
+             

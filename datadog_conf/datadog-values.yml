@@ -1,0 +1,17 @@
+targetSystem: "linux"
+datadog:
+  confd: # {}
+    openmetrics.yaml: |-
+      init_config:
+      instances:
+      # The prometheus endpoint to query from
+      - prometheus_url: http://webui-service:1024/metrics
+        namespace: "webui-apm"
+        metrics:
+          - "*"
+  site: 'datadoghq.eu'
+  apiKey: __DATADOG_API_KEY_SECRET__
+  logs:
+    enabled: true
+    containerCollectAll: false
+    containerCollectUsingFiles: true
