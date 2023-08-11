@@ -1,6 +1,6 @@
 name: Install & configure prometheus & grafana tools
 
-on: [push]
+on: workflow_dispatch
 env:
     CLUSTER_NAME: dockercoins-cluster-teo
     CLUSTER_ZONE: europe-west1-b
