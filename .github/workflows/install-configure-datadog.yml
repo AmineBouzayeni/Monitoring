@@ -1,4 +1,4 @@
-name: Install & configure tools
+name: Install & configure datadog tool
 
 on: workflow_dispatch
 env:
