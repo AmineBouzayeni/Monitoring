@@ -1,0 +1,106 @@
+name: Install & configure prometheus & grafana tools
+
+on: workflow_dispatch
+env:
+    CLUSTER_NAME: dockercoins-cluster-teo
+    CLUSTER_ZONE: europe-west1-b
+    PROJECT_NAME: teolia-school-devops
+    GRAFANA_PORT: 30008
+      
+jobs:
+  InstallAndConfigureMonitoring:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Authenticate to GKE
+        uses: "./.github/template/authenticate" 
+        with:
+          gcloud_key: ${{ secrets.GCLOUD_KEY }}
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          cluster_zone: ${{ env.CLUSTER_ZONE }}
+          project_name: ${{ env.PROJECT_NAME }}
+      - name: Create prometheus-grafana Release
+        id: create_release
+        uses: "./.github/template/release"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          product: prometheus-grafana
+          version: ${{ vars.PROMGRAF_CURRENT_VERSION }}
+
+      - name: Replace points by dashes in release string
+        id: release
+        run: |
+            currentVersion=$(echo ${{ vars.PROMGRAF_CURRENT_VERSION }} | sed 's/\./-/g')
+            echo "currentVersion=$(echo $currentVersion)" >> $GITHUB_OUTPUT
+
+      - name: Install helm
+        uses: "./.github/template/helm"    
+      
+      - name: Install and configure Prometheus
+        uses: "./.github/template/install_release"
+        with:
+          repo: https://prometheus-community.github.io/helm-charts
+          product: prometheus-community
+          version: ${{ steps.release.outputs.currentVersion }}
+          values_path: ./prometheus_conf/prometheus-values.yml
+          chart: prometheus-community/prometheus
+       
+      - name: Update admin password, grafana port and release value.
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: '["./grafana_conf/grafana-values.yml", "./manifests/grafana-service-ext.yml"]'
+          tokenPrefix: __
+          tokenSuffix: __
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GRAFANA_PORT: ${{ env.GRAFANA_PORT }}
+          RELEASE: ${{ steps.release.outputs.currentVersion }}
+
+      - name: Update admin password, grafana ip & port in get-datasource script.
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: '["./get-datasource-uid.sh"]'
+          tokenPrefix: __
+          tokenSuffix: __
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          GRAFANA_IP: ${{ vars.GRAFANA_IP }}
+          GRAFANA_PORT: ${{ env.GRAFANA_PORT }}
+          DS_NAME: Prometheus
+
+      - name: Get datasource uid
+        id: uid
+        run: |
+          chmod +x ./grafana_conf/get-datasource-uid.sh
+          datasourceUid=$(./grafana_conf/get-datasource-uid.sh)
+          echo "datasourceUid=$(echo $datasourceUid)" >> $GITHUB_OUTPUT
+
+      - name: Update UID in dashboard json file.
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: '["./manifests/sample-grafana-dashboard.yml"]'
+          tokenPrefix: __
+          tokenSuffix: __
+        env:
+          UID: ${{ steps.uid.outputs.datasourceUid }}
+
+      - name: Install & configure Grafana
+        uses: './.github/template/install_release'
+        with:
+          repo: https://grafana.github.io/helm-charts
+          product: grafana
+          version: ${{ steps.release.outputs.currentVersion }}
+          values_path: ./grafana_conf/grafana-values.yml
+          chart: grafana/grafana
+      
+      - name: Expose Grafana service and create dashboard ConfigMap
+        run: |
+            # Expose grafana with nodePort service
+            kubectl apply -f manifests/grafana-service-ext.yml
+            # Create configMap kv to store dashboard content
+            kubectl apply -f manifests/sample-grafana-dashboard.yml    

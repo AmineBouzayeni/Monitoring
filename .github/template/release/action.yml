@@ -1,0 +1,22 @@
+name: Create release for a product
+
+# Were we can define the inputs that our action will accept
+inputs:
+  product: 
+    required: true
+  version:
+    required: true   
+
+runs:
+  using: "composite" # A composite action allows you to combine multiple workflow steps within one action.
+  # Defining the action steps(Just one step to be simple)
+  steps:
+    - name: Create ${{ inputs.product }} Release
+      uses: actions/create-release@latest
+      with:
+        tag_name: ${{ inputs.product }}-${{ inputs.version }}
+        release_name: ${{ inputs.product }} Release ${{ inputs.version }}
+        body: |
+          ${{ inputs.product }} release ${{ inputs.version }}.
+        draft: false
+        prerelease: false
