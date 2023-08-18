@@ -73,22 +73,6 @@ jobs:
           GRAFANA_PORT: ${{ env.GRAFANA_PORT }}
           DS_NAME: Prometheus
 
-      - name: Get datasource uid
-        id: uid
-        run: |
-          chmod +x ./grafana_conf/get-datasource-uid.sh
-          datasourceUid=$(./grafana_conf/get-datasource-uid.sh)
-          echo "datasourceUid=$(echo $datasourceUid)" >> $GITHUB_OUTPUT
-
-      - name: Update UID in dashboard json file.
-        uses: cschleiden/replace-tokens@v1
-        with:
-          files: '["./manifests/sample-grafana-dashboard.yml"]'
-          tokenPrefix: __
-          tokenSuffix: __
-        env:
-          UID: ${{ steps.uid.outputs.datasourceUid }}
-
       - name: Install & configure Grafana
         uses: './.github/template/install_release'
         with:
@@ -97,6 +81,22 @@ jobs:
           version: ${{ steps.release.outputs.currentVersion }}
           values_path: ./grafana_conf/grafana-values.yml
           chart: grafana/grafana
+      
+      - name: Get datasource uid
+        id: uid
+        run: |
+          chmod +x ./grafana_conf/get-datasource-uid.sh
+          datasourceUid=$(./grafana_conf/get-datasource-uid.sh)
+          echo "datasourceUid=$(echo $datasourceUid)" >> $GITHUB_OUTPUT
+  
+      - name: Update UID in dashboard json file.
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: '["./manifests/sample-grafana-dashboard.yml"]'
+          tokenPrefix: __
+          tokenSuffix: __
+        env:
+          UID: ${{ steps.uid.outputs.datasourceUid }}    
       
       - name: Expose Grafana service and create dashboard ConfigMap
         run: |
